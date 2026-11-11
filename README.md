@@ -81,5 +81,6 @@ Consent 状态：`GET /api/extensions/status`（或 Settings → Extensions）�
 
 - 用量接口是平台前端自用端点，没有 SLA；`by_api_key` 返回的是账号下**所有** key 的合计（卡片不区分单把 key）。
 - 平台只给「当日/区间」分桶，不给「当前这一小时进行到哪」的秒级实时值；60s 缓存已经是合理粒度。
+- 用量接口要求 `start`/`end` 对齐分桶边界（整点/整日），带分钟的 `now` 会返回 `biz 1 INVALID_PARAM`。sidecar 固定请求 `[今日 00:00, 次日 00:00)` 和 30 个完整日桶，所以图表末尾会出现未来的空柱，属正常。
 - 账户同时有 USD / CNY 钱包时，余额取 CNY；费用取 cost 接口返回的 CNY 序列。
 - systemd 单元硬编码默认状态目录；若用 `HERMES_WEBUI_STATE_DIR` 重定位，需同步改 `lifecycle/` 下的单元文件。

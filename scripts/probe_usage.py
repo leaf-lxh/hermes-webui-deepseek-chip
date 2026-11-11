@@ -34,11 +34,12 @@ def main() -> int:
 
     now = int(time.time())
     if args.range == "today":
-        start, end = r._day_start(now), max(now, r._day_start(now) + 60)
+        start = r._day_start(now)
+        end = start + 86400            # aligned; unaligned end => INVALID_PARAM
         label = "%H"
     else:
         start = r._day_start(now) - 29 * 86400
-        end = max(now, start + 29 * 86400 + 60)
+        end = start + 30 * 86400
         label = "%m-%d"
 
     pair = r._fetch_pair(start, end, token)

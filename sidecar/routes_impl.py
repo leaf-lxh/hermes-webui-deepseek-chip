@@ -334,7 +334,10 @@ def _cached(name: str, ttl: int, builder, refresh: bool):
 def _today_bundle(refresh: bool):
     now = int(time.time())
     start = _day_start(now)
-    end = max(now, start + 60)
+    # The platform rejects unaligned ranges with biz 1 INVALID_PARAM. A full
+    # [today 00:00, tomorrow 00:00) range is aligned and yields exactly 24
+    # hourly buckets; future hours simply come back empty.
+    end = start + 86400
     token = _load_secret("DEEPSEEK_PLATFORM_TOKEN")
     if not token:
         return {"__error__": "未配置 DEEPSEEK_PLATFORM_TOKEN"}
@@ -347,8 +350,7 @@ def _today_bundle(refresh: bool):
 def _days_bundle(days: int, refresh: bool):
     now = int(time.time())
     start = _day_start(now) - (days - 1) * 86400
-    # exactly `days` buckets including today's partial one, even at 00:00
-    end = max(now, start + (days - 1) * 86400 + 60)
+    end = start + days * 86400       # exactly `days` aligned daily buckets
     token = _load_secret("DEEPSEEK_PLATFORM_TOKEN")
     if not token:
         return {"__error__": "未配置 DEEPSEEK_PLATFORM_TOKEN"}
