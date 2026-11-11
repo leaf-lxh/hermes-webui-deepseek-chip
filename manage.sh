@@ -234,16 +234,22 @@ cmd_status() {
 }
 
 cmd_doctor() {
+  _cred() {
+    grep -E "^$1=" "$HOME/.hermes/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d "\"' \r"
+  }
+
   echo "== 1/5 凭证 =="
-  if grep -q '^DEEPSEEK_API_KEY=' "$HOME/.hermes/.env" 2>/dev/null; then
-    echo "  ~/.hermes/.env 有 DEEPSEEK_API_KEY  OK(余额)"
+  api_key="$(_cred DEEPSEEK_API_KEY)"
+  if [ -n "$api_key" ] && [ "$api_key" != "***" ] && [ "${#api_key}" -ge 10 ]; then
+    echo "  DEEPSEEK_API_KEY  OK(余额)"
   else
-    warn "  ~/.hermes/.env 没有 DEEPSEEK_API_KEY —— 余额查不了"
+    warn "  DEEPSEEK_API_KEY 缺失 / 仍是 *** / 过短 —— 余额查不了"
   fi
-  if grep -q '^DEEPSEEK_PLATFORM_TOKEN=' "$HOME/.hermes/.env" 2>/dev/null; then
-    echo "  ~/.hermes/.env 有 DEEPSEEK_PLATFORM_TOKEN  OK(用量/费用)"
+  platform="$(_cred DEEPSEEK_PLATFORM_TOKEN)"
+  if [ -n "$platform" ] && [ "$platform" != "***" ] && [ "${#platform}" -ge 20 ]; then
+    echo "  DEEPSEEK_PLATFORM_TOKEN  OK(用量/费用)"
   else
-    warn "  没有 DEEPSEEK_PLATFORM_TOKEN —— 今日费用/token 与图表会显示未配置"
+    warn "  DEEPSEEK_PLATFORM_TOKEN 缺失 / 仍是 *** / 过短 —— 今日费用与图表会显示未配置"
   fi
 
   echo "== 2/5 端口 $PORT =="
