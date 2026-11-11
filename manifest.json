@@ -1,0 +1,21 @@
+{
+  "extensions": [
+    {
+      "id": "deepseek-quota",
+      "name": "DeepSeek Balance & Usage",
+      "enabled": true,
+      "scripts": [
+        "assets/deepseek-quota.js"
+      ],
+      "stylesheets": [
+        "assets/deepseek-quota.css"
+      ],
+      "sidecar": {
+        "type": "loopback",
+        "origin": "http://127.0.0.1:17801",
+        "health_path": "/health",
+        "proxy_auth": "token-v1"
+      }
+    }
+  ]
+}

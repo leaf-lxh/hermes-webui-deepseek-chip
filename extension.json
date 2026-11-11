@@ -1,0 +1,52 @@
+{
+  "id": "deepseek-quota",
+  "name": "DeepSeek Balance & Usage",
+  "description": "Show the DeepSeek account balance, today's spend and today's total token usage as a chip in the composer toolbar. Hover/tap opens a card with token-usage bar charts for today's 24 hours and the last 30 days. Balance comes from the official API (API key, server-side only); usage/cost come from the platform usage endpoint (platform userToken, server-side only).",
+  "version": "0.1.0",
+  "assets": {
+    "scripts": [
+      "assets/deepseek-quota.js"
+    ],
+    "stylesheets": [
+      "assets/deepseek-quota.css"
+    ]
+  },
+  "sidecar": {
+    "type": "loopback",
+    "origin": "http://127.0.0.1:17801",
+    "health_path": "/health",
+    "proxy_auth": "token-v1"
+  },
+  "capabilities": [
+    "manifest-bundle"
+  ],
+  "lifecycle": {
+    "webui_restart_required": false,
+    "sidecar_start_required": false,
+    "native_host_start_required": false,
+    "native_host_autostart": "none"
+  },
+  "screenshots": [],
+  "permissions": {
+    "webui_api": {
+      "read": [],
+      "write": []
+    },
+    "webui_navigation": false,
+    "dom": {
+      "owned": true,
+      "mutates_core_views": false
+    },
+    "storage": {
+      "owned": [],
+      "shared_webui_keys": []
+    },
+    "loopback_sidecar": true,
+    "native_host": false,
+    "filesystem": {
+      "arbitrary": false,
+      "serves_bundled_assets": true
+    },
+    "network_external": true
+  }
+}

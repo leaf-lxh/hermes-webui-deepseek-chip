@@ -1,0 +1,14 @@
+[Unit]
+Description=Hermes WebUI extension sidecar: deepseek-quota (DeepSeek balance & usage)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.hermes/webui/extensions/deepseek-quota/sidecar
+ExecStart=/usr/bin/python3 -S -u sidecar.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

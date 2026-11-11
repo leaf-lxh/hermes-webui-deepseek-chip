@@ -1,0 +1,353 @@
+/* DeepSeek balance & usage chip — colors and detail card on top of the core
+   .provider-quota-chip styles. Core caps the chip at 120px; this chip carries
+   three values, so it gets its own (still modest) cap. */
+.deepseek-quota-chip {
+  max-width: 280px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(77, 107, 254, .10);
+  border-color: rgba(77, 107, 254, .28);
+}
+
+.deepseek-quota-chip:hover {
+  background: rgba(77, 107, 254, .16);
+  border-color: rgba(77, 107, 254, .40);
+}
+
+.deepseek-quota-chip .provider-quota-chip-dot {
+  background: #4d6bfe;
+  box-shadow: 0 0 0 3px rgba(77, 107, 254, .14);
+}
+
+.deepseek-quota-chip.warn .provider-quota-chip-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .14);
+}
+
+.deepseek-quota-chip.hot .provider-quota-chip-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .14);
+}
+
+.deepseek-quota-chip.err .provider-quota-chip-dot {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, .14);
+}
+
+/* ── Detail card ────────────────────────────────────────────────────────── */
+.deepseek-quota-card {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  border: 1px solid var(--border2, rgba(128, 128, 128, .35));
+  border-radius: 12px;
+  background: var(--surface, #1b1d28);
+  color: var(--text, #e8e8f0);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .38);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: auto;
+}
+
+.deepseek-quota-card[hidden] { display: none !important; }
+
+.dsq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dsq-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.dsq-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4d6bfe, #7c5cff);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.dsq-updated {
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.dsq-balance {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(77, 107, 254, .08);
+  border: 1px solid rgba(77, 107, 254, .16);
+}
+
+.dsq-bal-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dsq-k {
+  color: var(--text2, #b6b8c8);
+  font-size: 11px;
+}
+
+.dsq-bal-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+}
+
+.dsq-bal-sub {
+  margin-top: 2px;
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+}
+
+.dsq-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface2, rgba(128, 128, 128, .12));
+}
+
+.dsq-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted, #8f92a8);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dsq-tab:hover { color: var(--text, #e8e8f0); }
+
+.dsq-tab.is-active {
+  background: var(--surface, #1b1d28);
+  color: var(--text, #e8e8f0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+}
+
+.dsq-tab:focus-visible {
+  outline: 2px solid rgba(77, 107, 254, .55);
+  outline-offset: 1px;
+}
+
+.dsq-sum {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  font-size: 11px;
+  color: var(--muted, #8f92a8);
+}
+
+.dsq-sum-tok { font-weight: 600; color: var(--text2, #b6b8c8); }
+
+.dsq-sum-cost {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dsq-chart {
+  position: relative;
+  height: 96px;
+  margin-top: 6px;
+}
+
+.dsq-grid {
+  position: absolute;
+  inset: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.dsq-grid i {
+  display: block;
+  height: 1px;
+  background: var(--border, rgba(128, 128, 128, .16));
+}
+
+.dsq-grid i:first-child { background: transparent; }
+
+.dsq-bars {
+  position: absolute;
+  inset: 0 0 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.dsq-col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  cursor: default;
+}
+
+.dsq-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 2px 2px 0 0;
+  overflow: hidden;
+  transition: height .3s cubic-bezier(.22, 1, .36, 1);
+}
+
+.dsq-col:hover .dsq-stack { filter: brightness(1.18) saturate(1.15); }
+
+.dsq-seg {
+  width: 100%;
+  min-height: 1px;
+  flex-basis: 0;
+}
+
+.dsq-xaxis {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--muted, #8f92a8);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dsq-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text2, #b6b8c8);
+}
+
+.dsq-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dsq-legend-name {
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsq-legend-val {
+  color: var(--muted, #8f92a8);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dsq-legend-more { color: var(--muted, #8f92a8); }
+
+.dsq-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.dsq-note {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border, rgba(128, 128, 128, .25));
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+}
+
+.dsq-note.err { color: #f87171; }
+
+/* ── Bar tooltip (fixed to the viewport, outside the card) ──────────────── */
+.deepseek-quota-tip {
+  position: fixed;
+  z-index: 10000;
+  min-width: 132px;
+  padding: 7px 9px;
+  border: 1px solid var(--border2, rgba(128, 128, 128, .35));
+  border-radius: 8px;
+  background: var(--surface, #1b1d28);
+  color: var(--text, #e8e8f0);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.deepseek-quota-tip[hidden] { display: none !important; }
+
+.dsq-tip-head {
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+
+.dsq-tip-sum {
+  color: var(--muted, #8f92a8);
+  margin-bottom: 3px;
+}
+
+.dsq-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.dsq-tip-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsq-tip-val {
+  flex: 0 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+}
+
+.dsq-tip-empty { color: var(--muted, #8f92a8); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dsq-stack { transition: none; }
+}
+
+/* Light skins: strengthen the card/track contrast a touch. */
+:root:not(.dark) .deepseek-quota-card,
+:root:not(.dark) .deepseek-quota-tip {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .16);
+}
+
+:root:not(.dark) .dsq-tabs { background: rgba(15, 23, 42, .06); }
+:root:not(.dark) .dsq-tab.is-active { background: #fff; }

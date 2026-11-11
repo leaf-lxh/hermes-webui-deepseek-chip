@@ -1,0 +1,5 @@
+{
+  "id": "deepseek-quota",
+  "port": 17801,
+  "proxy_auth": "token-v1"
+}
