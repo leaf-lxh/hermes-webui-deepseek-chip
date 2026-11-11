@@ -78,7 +78,8 @@ Consent 状态：`GET /api/extensions/status`（或 Settings → Extensions）�
 - 秘密不进本包；sidecar 运行时读 `~/.hermes/.env`。
 - 本地包不走官方 `/api/extensions/install`（只认公网 gallery 且不管理进程）；
   按官方 "Next step" 模式自带生命周期脚本。
-- `preview/preview.html` 是纯 mock 的视觉验收页，不随 install 同步。
+- `preview/preview.html` 是纯 mock 的视觉验收页，依赖相对 `assets/`，只适合 `file://` 或静态服务器；不随 install 同步。
+- `preview/standalone.html` 是同一页面的自包含版本（CSS/JS 全内联），可直接在 WebUI 的 HTML 预览里打开：沙箱 iframe 不会发任何子请求，因此不会触发外层 nginx 的 Basic Auth。改完 assets 后运行 `python3 scripts/build_preview.py` 重新生成。
 
 ## 已知限制
 

@@ -1,0 +1,1144 @@
+<!doctype html>
+<html class="dark">
+<head>
+<meta charset="utf-8">
+<title>DeepSeek chip preview (standalone)</title>
+<style>
+  :root.dark {
+    --surface: #1b1d28;
+    --surface2: rgba(128,128,128,.12);
+    --text: #e8e8f0;
+    --text2: #b6b8c8;
+    --muted: #8f92a8;
+    --border: rgba(128,128,128,.18);
+    --border2: rgba(128,128,128,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #0f1117;
+    color: #e8e8f0;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .page {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px;
+  }
+  .chat-hint { color: #6b7280; font-size: 13px; margin-bottom: auto; padding: 20px 4px; }
+  .composer {
+    border: 1px solid rgba(128,128,128,.25);
+    border-radius: 14px;
+    background: #14161f;
+    padding: 10px 12px;
+  }
+  .composer-input {
+    color: #9ca3af; font-size: 14px; padding: 6px 2px 18px;
+  }
+  .composer-footer { display: flex; align-items: center; }
+  .composer-left { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+  /* minimal core chip mimic, only for the preview page */
+  .provider-quota-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 30px; max-width: 120px; padding: 5px 8px;
+    border: 1px solid var(--border2); border-radius: 999px;
+    background: rgba(34,197,94,.10); color: var(--text);
+    font-size: 11px; font-weight: 650; line-height: 1; white-space: nowrap; cursor: pointer;
+  }
+  .provider-quota-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .provider-quota-chip-dot { width: 6px; height: 6px; border-radius: 999px; background: #22c55e; flex: 0 0 auto; }
+  .provider-quota-chip[hidden] { display: none !important; }
+</style>
+<style>
+/* DeepSeek balance & usage chip — colors and detail card on top of the core
+   .provider-quota-chip styles. Core caps the chip at 120px; this chip carries
+   three values, so it gets its own (still modest) cap. */
+.deepseek-quota-chip {
+  max-width: 280px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  background: rgba(77, 107, 254, .10);
+  border-color: rgba(77, 107, 254, .28);
+}
+
+.deepseek-quota-chip:hover {
+  background: rgba(77, 107, 254, .16);
+  border-color: rgba(77, 107, 254, .40);
+}
+
+.deepseek-quota-chip .provider-quota-chip-dot {
+  background: #4d6bfe;
+  box-shadow: 0 0 0 3px rgba(77, 107, 254, .14);
+}
+
+.deepseek-quota-chip.warn .provider-quota-chip-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .14);
+}
+
+.deepseek-quota-chip.hot .provider-quota-chip-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .14);
+}
+
+.deepseek-quota-chip.err .provider-quota-chip-dot {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, .14);
+}
+
+/* ── Detail card ────────────────────────────────────────────────────────── */
+.deepseek-quota-card {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  border: 1px solid var(--border2, rgba(128, 128, 128, .35));
+  border-radius: 12px;
+  background: var(--surface, #1b1d28);
+  color: var(--text, #e8e8f0);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .38);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: auto;
+}
+
+.deepseek-quota-card[hidden] { display: none !important; }
+
+.dsq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dsq-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.dsq-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4d6bfe, #7c5cff);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.dsq-updated {
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.dsq-balance {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(77, 107, 254, .08);
+  border: 1px solid rgba(77, 107, 254, .16);
+}
+
+.dsq-bal-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dsq-k {
+  color: var(--text2, #b6b8c8);
+  font-size: 11px;
+}
+
+.dsq-bal-value {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+}
+
+.dsq-bal-sub {
+  margin-top: 2px;
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+}
+
+.dsq-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface2, rgba(128, 128, 128, .12));
+}
+
+.dsq-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted, #8f92a8);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dsq-tab:hover { color: var(--text, #e8e8f0); }
+
+.dsq-tab.is-active {
+  background: var(--surface, #1b1d28);
+  color: var(--text, #e8e8f0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+}
+
+.dsq-tab:focus-visible {
+  outline: 2px solid rgba(77, 107, 254, .55);
+  outline-offset: 1px;
+}
+
+.dsq-sum {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  font-size: 11px;
+  color: var(--muted, #8f92a8);
+}
+
+.dsq-sum-tok { font-weight: 600; color: var(--text2, #b6b8c8); }
+
+.dsq-sum-cost {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.dsq-chart {
+  position: relative;
+  height: 96px;
+  margin-top: 6px;
+}
+
+.dsq-grid {
+  position: absolute;
+  inset: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.dsq-grid i {
+  display: block;
+  height: 1px;
+  background: var(--border, rgba(128, 128, 128, .16));
+}
+
+.dsq-grid i:first-child { background: transparent; }
+
+.dsq-bars {
+  position: absolute;
+  inset: 0 0 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.dsq-col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  cursor: default;
+}
+
+.dsq-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 2px 2px 0 0;
+  overflow: hidden;
+  transition: height .3s cubic-bezier(.22, 1, .36, 1);
+}
+
+.dsq-col:hover .dsq-stack { filter: brightness(1.18) saturate(1.15); }
+
+.dsq-seg {
+  width: 100%;
+  min-height: 1px;
+  flex-basis: 0;
+}
+
+.dsq-xaxis {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--muted, #8f92a8);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dsq-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text2, #b6b8c8);
+}
+
+.dsq-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dsq-legend-name {
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsq-legend-val {
+  color: var(--muted, #8f92a8);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.dsq-legend-more { color: var(--muted, #8f92a8); }
+
+.dsq-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.dsq-note {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border, rgba(128, 128, 128, .25));
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+}
+
+.dsq-note.err { color: #f87171; }
+
+/* ── Bar tooltip (fixed to the viewport, outside the card) ──────────────── */
+.deepseek-quota-tip {
+  position: fixed;
+  z-index: 10000;
+  min-width: 132px;
+  padding: 7px 9px;
+  border: 1px solid var(--border2, rgba(128, 128, 128, .35));
+  border-radius: 8px;
+  background: var(--surface, #1b1d28);
+  color: var(--text, #e8e8f0);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.deepseek-quota-tip[hidden] { display: none !important; }
+
+.dsq-tip-head {
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+
+.dsq-tip-sum {
+  color: var(--muted, #8f92a8);
+  margin-bottom: 3px;
+}
+
+.dsq-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.dsq-tip-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsq-tip-val {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.dsq-tip-empty { color: var(--muted, #8f92a8); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dsq-stack { transition: none; }
+}
+
+/* Light skins: strengthen the card/track contrast a touch. */
+:root:not(.dark) .deepseek-quota-card,
+:root:not(.dark) .deepseek-quota-tip {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .16);
+}
+
+:root:not(.dark) .dsq-tabs { background: rgba(15, 23, 42, .06); }
+:root:not(.dark) .dsq-tab.is-active { background: #fff; }
+
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chat-hint">DeepSeek chip preview — mock data, real extension JS/CSS.</div>
+  <div class="composer">
+    <div class="composer-input">Type a message…</div>
+    <div class="composer-footer">
+      <div class="composer-left">
+        <button class="provider-quota-chip" id="providerQuotaChip" type="button" hidden>
+          <span class="provider-quota-chip-dot"></span>
+          <span class="provider-quota-chip-label" id="providerQuotaChipLabel"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="composerMobileConfigPanel"></div>
+
+<script>
+(() => {
+  const now = Math.floor(Date.now() / 1000);
+  const todayStart = (() => {
+    const d = new Date(now * 1000);
+    d.setHours(0, 0, 0, 0);
+    return Math.floor(d.getTime() / 1000);
+  })();
+
+  const HOUR = [0.2, 0.1, 0, 0, 0, 0.3, 1.1, 2.4, 3.2, 1.9, 1.3, 0.8,
+                1.5, 2.1, 3.6, 2.7, 1.8, 2.4, 3.9, 2.2, 1.1, 0.7, 0.4, 0.25];
+  const PRO  = [0.05, 0.02, 0, 0, 0, 0.08, 0.3, 0.7, 1.0, 0.5, 0.4, 0.2,
+                0.45, 0.6, 1.1, 0.8, 0.5, 0.7, 1.2, 0.6, 0.3, 0.2, 0.1, 0.06];
+
+  function todaySlots() {
+    return HOUR.map((m, h) => {
+      const flash = m * 1e6;
+      const pro = PRO[h] * 1e6;
+      return {
+        t: todayStart + h * 3600,
+        label: String(h).padStart(2, '0'),
+        total: flash + pro,
+        cost: (flash * 0.0000021) + (pro * 0.0000095),
+        models: { 'deepseek-v4-flash': flash, 'deepseek-v4-pro': pro },
+      };
+    });
+  }
+
+  function last30Slots() {
+    const out = [];
+    const start = todayStart - 29 * 86400;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date((start + i * 86400) * 1000);
+      const base = 8 + 10 * Math.sin(i * 0.7) + (i % 7 === 5 ? 9 : 0) + (i % 5 === 0 ? 4 : 0);
+      const flash = Math.max(0.2, base) * 1e6;
+      const pro = Math.max(0.05, base * 0.18) * 1e6;
+      out.push({
+        t: start + i * 86400,
+        label: String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
+        total: flash + pro,
+        cost: flash * 0.0000021 + pro * 0.0000095,
+        models: { 'deepseek-v4-flash': flash, 'deepseek-v4-pro': pro },
+      });
+    }
+    return out;
+  }
+
+  const today = todaySlots();
+  const d30 = last30Slots();
+
+  function pack(slots) {
+    const totals = { tokens: 0, cost: 0 };
+    const byModel = {};
+    slots.forEach((s) => {
+      totals.tokens += s.total;
+      totals.cost += s.cost;
+      Object.keys(s.models).forEach((k) => { byModel[k] = (byModel[k] || 0) + s.models[k]; });
+    });
+    return {
+      ok: true,
+      slots,
+      totals,
+      currency: 'CNY',
+      models: Object.keys(byModel)
+        .sort((a, b) => byModel[b] - byModel[a])
+        .map((name) => ({ name, tokens: byModel[name] })),
+      fetched_at: now,
+    };
+  }
+
+  const todayData = pack(today);
+  const d30Data = pack(d30);
+
+  const summary = {
+    ok: true,
+    balance: { currency: 'CNY', total: 6.07, granted: 0, topped_up: 6.07, available: true },
+    balance_error: null,
+    usage_ok: true,
+    usage_error: null,
+    today: {
+      tokens: todayData.totals.tokens,
+      cost: todayData.totals.cost,
+      currency: 'CNY',
+      requests: 412,
+      by_model: { 'deepseek-v4-flash': 14_900_000, 'deepseek-v4-pro': 3_400_000 },
+    },
+    currency: 'CNY',
+    fetched_at: now,
+  };
+
+  window.fetch = async (url) => {
+    await new Promise((r) => setTimeout(r, 40));
+    const u = String(url);
+    let data;
+    if (u.includes('/api/summary')) data = summary;
+    else if (u.includes('range=30d')) data = d30Data;
+    else data = todayData;
+    return { ok: true, status: 200, json: async () => data };
+  };
+})();
+</script>
+<script>
+/* DeepSeek balance & usage chip — Hermes WebUI extension.
+ *
+ * Chip: balance | today's spend | today's total tokens.
+ * Card: two tabs (today's 24 hours / last 30 days) with per-model stacked
+ * token-usage bars, plus per-bucket cost in the tooltip.
+ *
+ * Data comes from this extension's loopback sidecar through the same-origin
+ * WebUI proxy; the DeepSeek API key and platform token never reach the browser.
+ * Pure DOM injection. All render writes are change-guarded: core re-measures
+ * .composer-left on mutations, so pointless writes would churn the composer.
+ *
+ * IMPORTANT: never toggle visibility from JS based on the composer fit stage —
+ * core CSS hides .provider-quota-chip in the burger stage. Let it.
+ */
+(() => {
+  'use strict';
+
+  if (window.__hermesDeepSeekQuotaLoaded) return;
+  window.__hermesDeepSeekQuotaLoaded = true;
+
+  const SUMMARY_URL = '/api/extensions/deepseek-quota/sidecar/api/summary';
+  const USAGE_URL = (range) =>
+    '/api/extensions/deepseek-quota/sidecar/api/usage?range=' + encodeURIComponent(range);
+  const POLL_MS = 60 * 1000;
+  const USAGE_POLL_MS = 120 * 1000;
+  const STALE_S = 5 * 60;
+  const CHIP_ID = 'deepseekQuotaChip';
+  const MOBILE_ROW_ID = 'deepseekQuotaMobileRow';
+  const CARD_ID = 'deepseekQuotaCard';
+  const TIP_ID = 'deepseekQuotaTip';
+  const PALETTE = ['#4d6bfe', '#14b8a6', '#a855f7', '#f59e0b', '#ec4899', '#64748b'];
+
+  const hoverEnabled = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+
+  let chip = null;
+  let labelEl = null;
+  let mRow = null;
+  let mVal = null;
+  let mDot = null;
+  let card = null;
+  let cardEls = null;
+  let cardAnchor = null;
+  let closeTimer = null;
+  let tip = null;
+  let lastData = null;
+  let lastStale = false;
+  let activeRange = 'today';
+  const usageCache = {};
+  const usageInFlight = {};
+  let usageTimer = null;
+  let summaryInFlight = false;
+  let booted = false;
+
+  // ── helpers ─────────────────────────────────────────────────────────────
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function setText(node, s) { if (node && node.textContent !== s) node.textContent = s; }
+  function setHidden(node, v) { if (node && node.hidden !== v) node.hidden = v; }
+
+  function fmtTokens(value) {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return '0';
+    const trim = (x) => {
+      const r = Math.round(x * 10) / 10;
+      return r % 1 === 0 ? String(Math.round(r)) : r.toFixed(1);
+    };
+    if (v >= 1e9) return trim(v / 1e9) + 'B';
+    if (v >= 1e6) return trim(v / 1e6) + 'M';
+    if (v >= 1e3) return trim(v / 1e3) + 'K';
+    return String(Math.round(v));
+  }
+
+  function fmtMoney(value, currency) {
+    const v = Number(value);
+    if (!Number.isFinite(v)) return '—';
+    const sym = (currency || 'CNY').toUpperCase() === 'USD' ? '$' : '¥';
+    if (v > 0 && v < 0.01) return '<' + sym + '0.01';
+    return sym + v.toFixed(2);
+  }
+
+  function timeStr(epoch) {
+    const n = Number(epoch);
+    if (!Number.isFinite(n)) return '';
+    const d = new Date(n * 1000);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return hh + ':' + mm;
+  }
+
+  function severityFrom(data) {
+    if (!data || data.ok !== true) return 'err';
+    const b = data.balance;
+    if (!b) return 'err';
+    if (Number(b.total) < 0.1) return 'hot';
+    if (Number(b.total) < 1) return 'warn';
+    return '';
+  }
+
+  function chipText(data) {
+    if (!data || data.ok !== true) return 'DeepSeek ⚠';
+    const parts = [];
+    const b = data.balance;
+    if (b) parts.push('余额 ' + fmtMoney(b.total, b.currency));
+    else if (data.balance_error) parts.push('余额 ⚠');
+    if (data.usage_ok && data.today) {
+      parts.push('今日 ' + fmtMoney(data.today.cost, data.today.currency));
+      parts.push(fmtTokens(data.today.tokens) + ' tok');
+    } else {
+      parts.push('用量未配置');
+    }
+    return parts.join(' · ');
+  }
+
+  // ── tooltip ─────────────────────────────────────────────────────────────
+  function ensureTip() {
+    if (tip && document.contains(tip)) return tip;
+    tip = el('div', 'deepseek-quota-tip');
+    tip.id = TIP_ID;
+    tip.hidden = true;
+    document.body.appendChild(tip);
+    return tip;
+  }
+
+  function hideTip() { if (tip) tip.hidden = true; }
+
+  function showTip(index, col) {
+    const entry = usageCache[activeRange];
+    const data = entry && entry.data;
+    if (!data || data.ok !== true || !Array.isArray(data.slots)) return;
+    const slot = data.slots[index];
+    if (!slot) return;
+    ensureTip();
+    tip.textContent = '';
+
+    const head = el('div', 'dsq-tip-head');
+    if (activeRange === 'today') {
+      const h = Number(slot.label);
+      const next = String((h + 1) % 24).padStart(2, '0');
+      head.textContent = String(slot.label).padStart(2, '0') + ':00 – ' + next + ':00';
+    } else {
+      head.textContent = slot.label;
+    }
+    tip.appendChild(head);
+
+    const sum = el('div', 'dsq-tip-sum');
+    sum.textContent = fmtTokens(slot.total) + ' tok · ' + fmtMoney(slot.cost, data.currency);
+    tip.appendChild(sum);
+
+    const models = Object.keys(slot.models || {})
+      .filter((name) => Number(slot.models[name]) > 0)
+      .sort((a, b) => Number(slot.models[b]) - Number(slot.models[a]));
+    const order = {};
+    (data.models || []).forEach((m, i) => { order[m.name] = i; });
+    const maxWidth = Math.min(300, window.innerWidth - 16);
+    tip.style.maxWidth = maxWidth + 'px';
+    for (const name of models) {
+      const row = el('div', 'dsq-tip-row');
+      const dot = el('i', 'dsq-dot');
+      dot.style.background = PALETTE[(order[name] != null ? order[name] : models.indexOf(name)) % PALETTE.length];
+      row.appendChild(dot);
+      row.appendChild(el('span', 'dsq-tip-name', name));
+      row.appendChild(el('b', 'dsq-tip-val', fmtTokens(slot.models[name])));
+      tip.appendChild(row);
+    }
+    if (!models.length) {
+      tip.appendChild(el('div', 'dsq-tip-empty', '本时段无调用'));
+    }
+
+    tip.hidden = false;
+    const r = col.getBoundingClientRect();
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    let top = r.top - th - 8;
+    if (top < 8) top = r.bottom + 8;
+    if (top + th > window.innerHeight - 8) top = Math.max(8, window.innerHeight - th - 8);
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
+
+  // ── detail card ─────────────────────────────────────────────────────────
+  function ensureCard() {
+    if (card && document.contains(card)) return card;
+    card = el('div', 'deepseek-quota-card');
+    card.id = CARD_ID;
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-label', 'DeepSeek usage');
+    card.hidden = true;
+    card.addEventListener('mouseenter', () => {
+      if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    });
+    card.addEventListener('mouseleave', scheduleClose);
+
+    const head = el('div', 'dsq-head');
+    const brand = el('div', 'dsq-brand');
+    brand.appendChild(el('span', 'dsq-mark', 'DS'));
+    brand.appendChild(el('span', 'dsq-brand-text', 'DeepSeek 用量'));
+    const updated = el('span', 'dsq-updated', '');
+    head.appendChild(brand);
+    head.appendChild(updated);
+    card.appendChild(head);
+
+    const bal = el('div', 'dsq-balance');
+    const balMain = el('div', 'dsq-bal-main');
+    balMain.appendChild(el('span', 'dsq-k', '账户余额'));
+    const balValue = el('span', 'dsq-bal-value', '—');
+    balMain.appendChild(balValue);
+    const balSub = el('div', 'dsq-bal-sub', '');
+    bal.appendChild(balMain);
+    bal.appendChild(balSub);
+    card.appendChild(bal);
+
+    const tabs = el('div', 'dsq-tabs');
+    const tabToday = el('button', 'dsq-tab is-active', '今日 24 小时');
+    tabToday.type = 'button';
+    tabToday.dataset.range = 'today';
+    const tab30 = el('button', 'dsq-tab', '近 30 天');
+    tab30.type = 'button';
+    tab30.dataset.range = '30d';
+    tabs.appendChild(tabToday);
+    tabs.appendChild(tab30);
+    card.appendChild(tabs);
+
+    const sum = el('div', 'dsq-sum');
+    const sumTok = el('span', 'dsq-sum-tok', '—');
+    const sumCost = el('span', 'dsq-sum-cost', '');
+    sum.appendChild(sumTok);
+    sum.appendChild(sumCost);
+    card.appendChild(sum);
+
+    const chart = el('div', 'dsq-chart');
+    const grid = el('div', 'dsq-grid');
+    grid.appendChild(el('i'));
+    grid.appendChild(el('i'));
+    grid.appendChild(el('i'));
+    const bars = el('div', 'dsq-bars');
+    chart.appendChild(grid);
+    chart.appendChild(bars);
+    card.appendChild(chart);
+
+    const xaxis = el('div', 'dsq-xaxis');
+    const xa = [el('span'), el('span'), el('span')];
+    xa.forEach((s) => xaxis.appendChild(s));
+    card.appendChild(xaxis);
+
+    const legend = el('div', 'dsq-legend');
+    card.appendChild(legend);
+
+    const note = el('div', 'dsq-note', '');
+    card.appendChild(note);
+
+    tabs.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.dsq-tab') : null;
+      if (!btn) return;
+      const range = btn.dataset.range === '30d' ? '30d' : 'today';
+      selectRange(range);
+    });
+
+    document.body.appendChild(card);
+
+    cardEls = { updated, balValue, balSub, tabs, tabToday, tab30, sumTok, sumCost, bars, xa, legend, note };
+    return card;
+  }
+
+  function positionCard(anchor) {
+    const r = anchor.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const cw = Math.min(380, vw - 16);
+    card.style.maxWidth = cw + 'px';
+    const ch = card.offsetHeight;
+    const left = Math.min(Math.max(8, r.left), Math.max(8, vw - cw - 8));
+    let top;
+    if (r.top >= ch + 12) top = r.top - ch - 8;
+    else if (vh - r.bottom >= ch + 12) top = r.bottom + 8;
+    else top = Math.max(8, Math.min(r.top - ch - 8, vh - ch - 8));
+    card.style.left = left + 'px';
+    card.style.top = top + 'px';
+  }
+
+  function buildLegend(models, currency) {
+    const legend = cardEls.legend;
+    legend.textContent = '';
+    const top = models.slice(0, 4);
+    top.forEach((m, i) => {
+      const item = el('span', 'dsq-legend-item');
+      const dot = el('i', 'dsq-dot');
+      dot.style.background = PALETTE[i % PALETTE.length];
+      item.appendChild(dot);
+      item.appendChild(el('span', 'dsq-legend-name', m.name || 'unknown'));
+      item.appendChild(el('span', 'dsq-legend-val', fmtTokens(m.tokens)));
+      legend.appendChild(item);
+    });
+    if (models.length > 4) {
+      legend.appendChild(el('span', 'dsq-legend-more', '+' + (models.length - 4)));
+    }
+    if (!models.length) legend.appendChild(el('span', 'dsq-legend-more', '暂无模型明细'));
+  }
+
+  function renderUsageLoading() {
+    if (!cardEls) return;
+    setText(cardEls.sumTok, '加载中…');
+    setText(cardEls.sumCost, '');
+    cardEls.bars.textContent = '';
+    cardEls.legend.textContent = '';
+    cardEls.xa.forEach((s) => setText(s, ''));
+    setText(cardEls.note, '正在向平台查询用量…');
+    cardEls.note.classList.remove('err');
+  }
+
+  function renderUsage(data) {
+    if (!cardEls) return;
+    hideTip();
+    if (!data || data.ok !== true) {
+      setText(cardEls.sumTok, '—');
+      setText(cardEls.sumCost, '');
+      cardEls.bars.textContent = '';
+      cardEls.legend.textContent = '';
+      cardEls.xa.forEach((s) => setText(s, ''));
+      setText(cardEls.note, (data && data.error) ? data.error : '用量数据不可用');
+      cardEls.note.classList.add('err');
+      return;
+    }
+
+    const slots = Array.isArray(data.slots) ? data.slots : [];
+    const models = Array.isArray(data.models) ? data.models : [];
+    const currency = data.currency || 'CNY';
+    const totals = data.totals || { tokens: 0, cost: 0 };
+    setText(cardEls.sumTok, '合计 ' + fmtTokens(totals.tokens) + ' tok');
+    setText(cardEls.sumCost, fmtMoney(totals.cost, currency));
+    cardEls.note.classList.remove('err');
+    setText(cardEls.note, '更新于 ' + timeStr(data.fetched_at) + ' · 数据源 platform.deepseek.com');
+
+    // model order/color
+    const order = {};
+    models.forEach((m, i) => { order[m.name] = i; });
+    const extra = [];
+    slots.forEach((s) => {
+      Object.keys(s.models || {}).forEach((name) => {
+        if (order[name] == null) { order[name] = models.length + extra.length; extra.push(name); }
+      });
+    });
+
+    const max = Math.max(1, ...slots.map((s) => Number(s.total) || 0));
+    const bars = cardEls.bars;
+    bars.textContent = '';
+    const frag = document.createDocumentFragment();
+    slots.forEach((slot, index) => {
+      const col = el('div', 'dsq-col');
+      const stack = el('div', 'dsq-stack');
+      const total = Number(slot.total) || 0;
+      const h = total > 0 ? Math.max(2, Math.round((total / max) * 82)) : 0;
+      stack.style.height = h + 'px';
+      const names = Object.keys(slot.models || {}).sort((a, b) => (order[a] || 0) - (order[b] || 0));
+      for (const name of names) {
+        const value = Number(slot.models[name]) || 0;
+        if (value <= 0) continue;
+        const seg = el('div', 'dsq-seg');
+        seg.style.background = PALETTE[(order[name] || 0) % PALETTE.length];
+        seg.style.flexGrow = String(Math.max(value, 1));
+        stack.appendChild(seg);
+      }
+      col.appendChild(stack);
+      col.setAttribute('aria-label', (activeRange === 'today' ? slot.label + ':00' : slot.label) +
+        ' · ' + fmtTokens(total) + ' tok · ' + fmtMoney(slot.cost, currency));
+      col.addEventListener('mouseenter', () => showTip(index, col));
+      col.addEventListener('mouseleave', hideTip);
+      col.addEventListener('click', (e) => { e.stopPropagation(); showTip(index, col); });
+      frag.appendChild(col);
+    });
+    bars.appendChild(frag);
+
+    const labelOf = (slot) => {
+      if (!slot) return '';
+      return activeRange === 'today' ? String(slot.label).padStart(2, '0') + ':00' : slot.label;
+    };
+    setText(cardEls.xa[0], labelOf(slots[0]));
+    setText(cardEls.xa[1], labelOf(slots[Math.floor((slots.length - 1) / 2)]));
+    setText(cardEls.xa[2], labelOf(slots[slots.length - 1]));
+
+    buildLegend(models.concat(extra.map((name) => ({ name, tokens: 0 }))), currency);
+    // Chart content changed the card height after openCard positioned it once.
+    if (card && !card.hidden && cardAnchor) positionCard(cardAnchor);
+  }
+
+  function selectRange(range, force) {
+    activeRange = range === '30d' ? '30d' : 'today';
+    if (cardEls) {
+      cardEls.tabToday.classList.toggle('is-active', activeRange === 'today');
+      cardEls.tab30.classList.toggle('is-active', activeRange === '30d');
+    }
+    const cached = usageCache[activeRange];
+    const fresh = cached && (Date.now() / 1000 - cached.at) < 180;
+    if (cached && fresh && !force) renderUsage(cached.data);
+    else {
+      renderUsageLoading();
+      loadUsage(activeRange, force === true);
+    }
+  }
+
+  function loadUsage(range, force) {
+    if (usageInFlight[range]) return;
+    usageInFlight[range] = true;
+    const url = USAGE_URL(range) + (force ? '&refresh=1' : '');
+    fetch(url, { cache: 'no-store' })
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((data) => {
+        usageCache[range] = { at: Date.now() / 1000, data };
+        if (range === activeRange && card && !card.hidden) renderUsage(data);
+      })
+      .catch((e) => {
+        if (range === activeRange && card && !card.hidden) {
+          renderUsage({ ok: false, error: String((e && e.message) || e) });
+        }
+      })
+      .finally(() => { usageInFlight[range] = false; });
+  }
+
+  function startUsageTimer() {
+    stopUsageTimer();
+    usageTimer = setInterval(() => {
+      if (card && !card.hidden) loadUsage(activeRange, true);
+    }, USAGE_POLL_MS);
+  }
+
+  function stopUsageTimer() {
+    if (usageTimer) { clearInterval(usageTimer); usageTimer = null; }
+  }
+
+  function renderSummary(data) {
+    const nowS = Date.now() / 1000;
+    lastStale = !data || !Number.isFinite(Number(data.fetched_at)) ||
+      (nowS - Number(data.fetched_at)) > STALE_S;
+    if (data) lastData = data;
+    const sev = severityFrom(data);
+    const text = chipText(data);
+
+    if (ensureChip()) {
+      setHidden(chip, false);
+      chip.classList.remove('warn', 'hot', 'err');
+      if (sev) chip.classList.add(sev);
+      setText(labelEl, (lastStale && data && data.ok ? '?' : '') + text);
+    }
+
+    if (ensureMobileRow()) {
+      setText(mVal, (lastStale && data && data.ok ? '?' : '') + text);
+      if (mDot) {
+        mDot.style.background = sev === 'hot' ? '#ef4444' : sev === 'warn' ? '#f59e0b' :
+          sev === 'err' ? '#94a3b8' : '#4d6bfe';
+      }
+    }
+
+    if (cardEls && card && !card.hidden) {
+      const b = data && data.balance;
+      setText(cardEls.balValue, b ? fmtMoney(b.total, b.currency) : '—');
+      setText(cardEls.balSub, b
+        ? '赠送 ' + fmtMoney(b.granted, b.currency) + ' · 充值 ' + fmtMoney(b.topped_up, b.currency)
+        : (data && (data.balance_error || data.usage_error)) || '');
+      setText(cardEls.updated, data && data.fetched_at ? '更新于 ' + timeStr(data.fetched_at) : '');
+      if (!data || data.ok !== true) {
+        setText(cardEls.note, (data && (data.balance_error || data.usage_error)) || '加载失败');
+        cardEls.note.classList.add('err');
+      }
+      if (cardAnchor) positionCard(cardAnchor);
+    }
+  }
+
+  function openCard(anchor) {
+    ensureCard();
+    cardAnchor = anchor;
+    card.hidden = false;
+    positionCard(anchor);
+    renderSummary(lastData);
+    selectRange(activeRange, false);
+    startUsageTimer();
+    loadSummary(true);
+  }
+
+  function closeCard() {
+    if (closeTimer) { closeTimer = null; }
+    if (card) card.hidden = true;
+    stopUsageTimer();
+    hideTip();
+    cardAnchor = null;
+  }
+
+  function scheduleClose() {
+    if (closeTimer) clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => { closeTimer = null; closeCard(); }, 150);
+  }
+
+  function toggleCard(anchor) {
+    if (card && !card.hidden && cardAnchor === anchor) closeCard();
+    else openCard(anchor);
+  }
+
+  // ── anchors ─────────────────────────────────────────────────────────────
+  function wireAnchor(node) {
+    node.setAttribute('aria-label', 'DeepSeek balance and usage');
+    if (hoverEnabled) {
+      node.addEventListener('mouseenter', () => {
+        if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+        openCard(node);
+      });
+      node.addEventListener('mouseleave', scheduleClose);
+    }
+    node.addEventListener('click', () => {
+      if (!hoverEnabled) toggleCard(node);
+      else loadSummary(true);
+    });
+  }
+
+  function ensureChip() {
+    if (chip && document.contains(chip)) return true;
+    const left = document.querySelector('.composer-footer .composer-left');
+    if (!left) return false;
+    chip = el('button', 'provider-quota-chip deepseek-quota-chip');
+    chip.type = 'button';
+    chip.id = CHIP_ID;
+    chip.hidden = true;
+    const dot = el('span', 'provider-quota-chip-dot');
+    dot.setAttribute('aria-hidden', 'true');
+    labelEl = el('span', 'provider-quota-chip-label', 'DeepSeek');
+    chip.appendChild(dot);
+    chip.appendChild(labelEl);
+    wireAnchor(chip);
+    const anchor = left.querySelector('#providerQuotaChip');
+    if (anchor && anchor.parentElement === left) anchor.after(chip);
+    else left.appendChild(chip);
+    return true;
+  }
+
+  function ensureMobileRow() {
+    if (mRow && document.contains(mRow)) return true;
+    const panel = document.getElementById('composerMobileConfigPanel');
+    if (!panel) return false;
+    mRow = el('button', 'composer-mobile-config-action');
+    mRow.type = 'button';
+    mRow.id = MOBILE_ROW_ID;
+    wireAnchor(mRow);
+    const icon = el('span', 'composer-model-icon');
+    icon.setAttribute('aria-hidden', 'true');
+    mDot = el('span', 'provider-quota-chip-dot');
+    mDot.style.boxShadow = 'none';
+    icon.appendChild(mDot);
+    const copy = el('span', 'composer-mobile-config-copy');
+    copy.appendChild(el('span', 'composer-mobile-config-kicker', 'DeepSeek'));
+    mVal = el('span', 'composer-mobile-config-value', '—');
+    copy.appendChild(mVal);
+    mRow.appendChild(icon);
+    mRow.appendChild(copy);
+    const anchor = document.getElementById('composerMobileQuotaAction');
+    if (anchor && anchor.parentElement === panel) anchor.after(mRow);
+    else panel.appendChild(mRow);
+    return true;
+  }
+
+  // ── data ────────────────────────────────────────────────────────────────
+  async function loadSummary(force) {
+    if (summaryInFlight) return;
+    summaryInFlight = true;
+    try {
+      const url = SUMMARY_URL + (force ? '?refresh=1' : '');
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      renderSummary(await r.json());
+    } catch (e) {
+      renderSummary({ ok: false, error: String((e && e.message) || e), fetched_at: Date.now() / 1000 });
+    } finally {
+      summaryInFlight = false;
+    }
+  }
+
+  function boot() {
+    if (booted) return;
+    if (!ensureChip()) return;
+    booted = true;
+    ensureMobileRow();
+    loadSummary(false);
+    setInterval(() => loadSummary(false), POLL_MS);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadSummary(false);
+    });
+    window.addEventListener('scroll', () => { closeCard(); }, { passive: true, capture: true });
+    window.addEventListener('resize', () => { closeCard(); }, { passive: true });
+  }
+
+  const bootObserver = new MutationObserver(() => {
+    if (booted) { bootObserver.disconnect(); return; }
+    boot();
+    if (booted) bootObserver.disconnect();
+  });
+  bootObserver.observe(document.body, { childList: true, subtree: true });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+
+</script>
+</body>
+</html>
