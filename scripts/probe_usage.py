@@ -4,7 +4,7 @@
 Run this after putting the platform token in ~/.hermes/.env:
 
     python3 scripts/probe_usage.py            # compact summary + shape
-    python3 scripts/probe_usage.py --raw      # full JSON (no secrets)
+    python3 scripts/probe_usage.py --raw      # full JSON (sk-* / sensitive_id masked)
 
 It never prints the token. Use it to confirm the response shape if the
 sidecar reports a parse error after a DeepSeek platform change.
@@ -13,12 +13,31 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "sidecar"))
 import routes_impl as r  # noqa: E402
+
+_SK_RE = re.compile(r"sk-[A-Za-z0-9_-]{6,}")
+
+
+def _redact(obj):
+    """The platform returns api_key.sensitive_id (a real sk-… value) in every
+    series. Redact it (and any sk-… string) before a --raw dump reaches a
+    terminal, a log or a bug report."""
+    if isinstance(obj, dict):
+        return {
+            key: ("sk-***" if key == "sensitive_id" else _redact(val))
+            for key, val in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_redact(item) for item in obj]
+    if isinstance(obj, str):
+        return _SK_RE.sub("sk-***", obj)
+    return obj
 
 
 def main() -> int:
@@ -44,7 +63,7 @@ def main() -> int:
 
     pair = r._fetch_pair(start, end, token)
     if args.raw:
-        print(json.dumps(pair, ensure_ascii=False, indent=2))
+        print(json.dumps(_redact(pair), ensure_ascii=False, indent=2))
         return 0
 
     amount = pair["amount"] or {}

@@ -75,11 +75,15 @@ cmd_install() {
 
   log "1/4 同步包文件 -> $EXT_DIR"
   mkdir -p "$EXT_DIR"
-  rm -rf "$EXT_DIR/sidecar/__pycache__"
+  rm -rf "$EXT_DIR/sidecar/__pycache__" "$EXT_DIR/scripts/__pycache__"
   rsync -a --delete \
     --exclude 'lifecycle/' --exclude '.git/' --exclude '.gitignore' \
     --exclude 'manage.sh' --exclude 'preview/' \
+    --exclude '__pycache__/' --exclude '*.pyc' --exclude '.DS_Store' \
     "$SRC_DIR"/ "$EXT_DIR"/
+  # --delete does not remove excluded files already on the destination; sweep
+  # stale caches explicitly so the registered file list only has real assets.
+  find "$EXT_DIR" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
 
   log "2/4 登记 install-manifest(files 列表含 sidecar/)"
   python3 - "$EXT_DIR" "$INSTALL_MANIFEST" <<'PYEOF'

@@ -5,6 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+Environment=PYTHONDONTWRITEBYTECODE=1
 WorkingDirectory=%h/.hermes/webui/extensions/deepseek-quota/sidecar
 ExecStart=/usr/bin/python3 -S -u sidecar.py
 Restart=on-failure

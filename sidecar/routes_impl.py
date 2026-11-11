@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -46,6 +47,12 @@ _LOCK = threading.Lock()
 _CACHE: dict[str, dict] = {}
 _UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+_SK_RE = re.compile(r"sk-[A-Za-z0-9_-]{6,}")
+
+
+def _scrub(text: str) -> str:
+    """Never let a key fragment from an upstream error reach the browser."""
+    return _SK_RE.sub("sk-***", text or "")
 
 
 # --------------------------------------------------------------------------
@@ -324,7 +331,7 @@ def _cached(name: str, ttl: int, builder, refresh: bool):
         payload = builder()
         use_ttl = ttl
     except Exception as exc:  # noqa: BLE001 — surface as JSON, never crash
-        payload = {"__error__": f"{type(exc).__name__}: {exc}"}
+        payload = {"__error__": f"{type(exc).__name__}: {_scrub(str(exc))}"}
         use_ttl = TTL_ERROR
     with _LOCK:
         _CACHE[name] = {"at": now, "payload": payload, "ttl": use_ttl}

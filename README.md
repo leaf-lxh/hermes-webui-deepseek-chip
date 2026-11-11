@@ -27,10 +27,13 @@
    ```js
    JSON.parse(localStorage.getItem('userToken')).value
    ```
-3. 把输出的字符串写进 `~/.hermes/.env`（自己执行，别贴到聊天里）：
+3. 用仓库里的脚本写入（**不要**把 token 贴到聊天/命令行参数里）：
+
    ```bash
-   printf 'DEEPSEEK_PLATFORM_TOKEN=%s\n' '<token>' >> ~/.hermes/.env
+   python3 scripts/set_token.py
    ```
+
+   脚本会删掉旧的/占位的 `DEEPSEEK_PLATFORM_TOKEN=` 行，交互式读取 token，原子写入并设成 `600`，最后通过 sidecar 验证一次。也可以手动写进 `~/.hermes/.env`，但别用 `KEY=$VAR` 形式的一行命令——聊天界面可能把 `$VAR` 脱敏成 `***`，复制回来就写错了。
 
 token 过期后：余额芯片继续正常，卡片里的用量区显示「platform token 无效或已过期」；重新取一个写回 `.env` 即可，**不用重启 sidecar**（每次请求都重新读 `.env`）。
 
