@@ -3,7 +3,8 @@
    three values, so it gets its own (still modest) cap. */
 .deepseek-quota-chip {
   max-width: 280px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   background: rgba(77, 107, 254, .10);
   border-color: rgba(77, 107, 254, .28);
 }
@@ -108,7 +109,8 @@
 }
 
 .dsq-bal-value {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -.2px;
@@ -170,7 +172,8 @@
 .dsq-sum-tok { font-weight: 600; color: var(--text2, #b6b8c8); }
 
 .dsq-sum-cost {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .dsq-chart {
@@ -266,7 +269,8 @@
 
 .dsq-legend-val {
   color: var(--muted, #8f92a8);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .dsq-legend-more { color: var(--muted, #8f92a8); }
@@ -333,7 +337,8 @@
 
 .dsq-tip-val {
   flex: 0 0 auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
