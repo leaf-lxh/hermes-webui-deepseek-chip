@@ -9,6 +9,10 @@
   - 柱子按模型堆叠，hover/点击单根柱显示该时段总 token、费用和分模型明细
 - token 量按 K / M / B 显示，金额一律 CNY（账户币种是 USD 时显示 `$`，不做汇率换算）
 
+![DeepSeek 芯片与用量卡片](docs/preview.png)
+
+> 示意图，数值为 mock 数据；实际显示以账户为准。
+
 ## 数据源与凭证
 
 | 数据 | 接口 | 鉴权 | 说明 |
@@ -78,8 +82,6 @@ Consent 状态：`GET /api/extensions/status`（或 Settings → Extensions）�
 - 秘密不进本包；sidecar 运行时读 `~/.hermes/.env`。
 - 本地包不走官方 `/api/extensions/install`（只认公网 gallery 且不管理进程）；
   按官方 "Next step" 模式自带生命周期脚本。
-- `preview/preview.html` 是纯 mock 的视觉验收页，依赖相对 `assets/`，只适合 `file://` 或静态服务器；不随 install 同步。
-- `preview/standalone.html` 是同一页面的自包含版本（CSS/JS 全内联），可直接在 WebUI 的 HTML 预览里打开：沙箱 iframe 不会发任何子请求，因此不会触发外层 nginx 的 Basic Auth。改完 assets 后运行 `python3 scripts/build_preview.py` 重新生成。
 
 ## 已知限制
 

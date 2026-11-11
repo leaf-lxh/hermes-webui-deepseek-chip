@@ -78,7 +78,7 @@ cmd_install() {
   rm -rf "$EXT_DIR/sidecar/__pycache__" "$EXT_DIR/scripts/__pycache__"
   rsync -a --delete \
     --exclude 'lifecycle/' --exclude '.git/' --exclude '.gitignore' \
-    --exclude 'manage.sh' --exclude 'preview/' \
+    --exclude 'manage.sh' --exclude 'docs/' \
     --exclude '__pycache__/' --exclude '*.pyc' --exclude '.DS_Store' \
     "$SRC_DIR"/ "$EXT_DIR"/
   # --delete does not remove excluded files already on the destination; sweep
