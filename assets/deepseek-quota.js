@@ -41,6 +41,7 @@
   let card = null;
   let cardEls = null;
   let cardAnchor = null;
+  let panelObserver = null;
   let closeTimer = null;
   let tip = null;
   let lastData = null;
@@ -605,7 +606,20 @@
     const anchor = document.getElementById('composerMobileQuotaAction');
     if (anchor && anchor.parentElement === panel) anchor.after(mRow);
     else panel.appendChild(mRow);
+    watchMobilePanel(panel);
     return true;
+  }
+
+  // Core closes the mobile config panel by removing its .open class (context
+  // button, outside tap, or opening another dropdown). Without this the usage
+  // card would stay floating after the panel it was opened from disappears.
+  function watchMobilePanel(panel) {
+    if (panelObserver) panelObserver.disconnect();
+    panelObserver = new MutationObserver(() => {
+      if (panel.classList.contains('open')) return;
+      if (card && !card.hidden && cardAnchor === mRow) closeCard();
+    });
+    panelObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
   }
 
   // ── data ────────────────────────────────────────────────────────────────
