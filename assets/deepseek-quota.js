@@ -2,7 +2,8 @@
  *
  * Chip: balance | today's spend | today's total tokens.
  * Card: two tabs (today's 24 hours / last 30 days) with per-model stacked
- * token-usage bars, plus per-bucket cost in the tooltip.
+ * token-usage bars, plus per-bucket cost and the input / cached-input / output
+ * token split in the tooltip.
  *
  * Data comes from this extension's loopback sidecar through the same-origin
  * WebUI proxy; the DeepSeek API key and platform token never reach the browser.
@@ -83,6 +84,11 @@
     return sym + v.toFixed(2);
   }
 
+  function fmtPct(ratio) {
+    const p = Math.round(ratio * 1000) / 10;
+    return (p % 1 === 0 ? String(Math.round(p)) : p.toFixed(1)) + '%';
+  }
+
   function timeStr(epoch) {
     const n = Number(epoch);
     if (!Number.isFinite(n)) return '';
@@ -128,6 +134,13 @@
 
   function hideTip() { if (tip) tip.hidden = true; }
 
+  function splitRow(label, value) {
+    const row = el('div', 'dsq-split-row');
+    row.appendChild(el('span', 'dsq-split-k', label));
+    row.appendChild(el('b', 'dsq-split-v', value));
+    return row;
+  }
+
   function showTip(index, col) {
     const entry = usageCache[activeRange];
     const data = entry && entry.data;
@@ -150,6 +163,19 @@
     const sum = el('div', 'dsq-tip-sum');
     sum.textContent = fmtTokens(slot.total) + ' tok · ' + fmtMoney(slot.cost, data.currency);
     tip.appendChild(sum);
+
+    if (slot.input != null || slot.cache != null || slot.output != null) {
+      const input = Number(slot.input) || 0;
+      const cache = Number(slot.cache) || 0;
+      const output = Number(slot.output) || 0;
+      const prompt = input + cache;
+      const split = el('div', 'dsq-tip-split');
+      split.appendChild(splitRow('输入 (未缓存)', fmtTokens(input)));
+      split.appendChild(splitRow('缓存输入',
+        fmtTokens(cache) + (prompt > 0 ? ' · ' + fmtPct(cache / prompt) : '')));
+      split.appendChild(splitRow('输出', fmtTokens(output)));
+      tip.appendChild(split);
+    }
 
     const models = Object.keys(slot.models || {})
       .filter((name) => Number(slot.models[name]) > 0)
@@ -234,6 +260,9 @@
     sum.appendChild(sumCost);
     card.appendChild(sum);
 
+    const sumSplit = el('div', 'dsq-sum-split', '');
+    card.appendChild(sumSplit);
+
     const chart = el('div', 'dsq-chart');
     const grid = el('div', 'dsq-grid');
     grid.appendChild(el('i'));
@@ -264,7 +293,7 @@
 
     document.body.appendChild(card);
 
-    cardEls = { updated, balValue, balSub, tabs, tabToday, tab30, sumTok, sumCost, bars, xa, legend, note };
+    cardEls = { updated, balValue, balSub, tabs, tabToday, tab30, sumTok, sumCost, sumSplit, bars, xa, legend, note };
     return card;
   }
 
@@ -307,6 +336,7 @@
     if (!cardEls) return;
     setText(cardEls.sumTok, '加载中…');
     setText(cardEls.sumCost, '');
+    setText(cardEls.sumSplit, '');
     cardEls.bars.textContent = '';
     cardEls.legend.textContent = '';
     cardEls.xa.forEach((s) => setText(s, ''));
@@ -320,6 +350,7 @@
     if (!data || data.ok !== true) {
       setText(cardEls.sumTok, '—');
       setText(cardEls.sumCost, '');
+      setText(cardEls.sumSplit, '');
       cardEls.bars.textContent = '';
       cardEls.legend.textContent = '';
       cardEls.xa.forEach((s) => setText(s, ''));
@@ -334,6 +365,18 @@
     const totals = data.totals || { tokens: 0, cost: 0 };
     setText(cardEls.sumTok, '合计 ' + fmtTokens(totals.tokens) + ' tok');
     setText(cardEls.sumCost, fmtMoney(totals.cost, currency));
+    if (totals.input != null || totals.cache != null || totals.output != null) {
+      const input = Number(totals.input) || 0;
+      const cache = Number(totals.cache) || 0;
+      const output = Number(totals.output) || 0;
+      const prompt = input + cache;
+      setText(cardEls.sumSplit,
+        '输入 ' + fmtTokens(input) + ' · 缓存输入 ' + fmtTokens(cache) +
+        (prompt > 0 ? ' (' + fmtPct(cache / prompt) + ')' : '') +
+        ' · 输出 ' + fmtTokens(output));
+    } else {
+      setText(cardEls.sumSplit, '');
+    }
     cardEls.note.classList.remove('err');
     setText(cardEls.note, '更新于 ' + timeStr(data.fetched_at) + ' · 数据源 platform.deepseek.com');
 
@@ -368,7 +411,11 @@
       }
       col.appendChild(stack);
       col.setAttribute('aria-label', (activeRange === 'today' ? slot.label + ':00' : slot.label) +
-        ' · ' + fmtTokens(total) + ' tok · ' + fmtMoney(slot.cost, currency));
+        ' · ' + fmtTokens(total) + ' tok · ' + fmtMoney(slot.cost, currency) +
+        (slot.input != null
+          ? ' · 输入 ' + fmtTokens(slot.input) + ' / 缓存输入 ' + fmtTokens(slot.cache) +
+            ' / 输出 ' + fmtTokens(slot.output)
+          : ''));
       col.addEventListener('mouseenter', () => showTip(index, col));
       col.addEventListener('mouseleave', hideTip);
       col.addEventListener('click', (e) => { e.stopPropagation(); showTip(index, col); });

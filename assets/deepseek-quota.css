@@ -176,6 +176,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+.dsq-sum-split {
+  margin-top: 1px;
+  color: var(--muted, #8f92a8);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
 .dsq-chart {
   position: relative;
   height: 96px;
@@ -296,7 +303,7 @@
 .deepseek-quota-tip {
   position: fixed;
   z-index: 10000;
-  min-width: 132px;
+  min-width: 176px;
   padding: 7px 9px;
   border: 1px solid var(--border2, rgba(128, 128, 128, .35));
   border-radius: 8px;
@@ -318,6 +325,35 @@
 .dsq-tip-sum {
   color: var(--muted, #8f92a8);
   margin-bottom: 3px;
+}
+
+.dsq-tip-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 1px 0 4px;
+  padding: 3px 0;
+  border-top: 1px solid var(--border, rgba(128, 128, 128, .18));
+  border-bottom: 1px solid var(--border, rgba(128, 128, 128, .18));
+}
+
+.dsq-split-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.dsq-split-k {
+  color: var(--muted, #8f92a8);
+  white-space: nowrap;
+}
+
+.dsq-split-v {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .dsq-tip-row {

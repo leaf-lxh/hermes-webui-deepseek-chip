@@ -81,6 +81,11 @@ def main() -> int:
         failures.append(f"requests {parsed['requests']} != 8")
     if parsed["bucket"] != 3600:
         failures.append(f"bucket {parsed['bucket']} != 3600")
+    # slot 0 split: flash 1000 hit / 2000 miss / 3000 out + pro 500/500/1000
+    if abs(parsed["by_model_detail"]["deepseek-v4-flash"]["total"] - 14000) > 1e-9:
+        failures.append("by_model_detail flash total != 14000")
+    if abs(parsed["by_model_detail"]["deepseek-v4-flash"]["cache"] - 1000) > 1e-9:
+        failures.append("by_model_detail flash cache != 1000")
 
     cost_map, currency = r._parse_cost(cost_fixture())
     if abs(sum(cost_map.values()) - 2.2270522) > 1e-6:
@@ -103,6 +108,19 @@ def main() -> int:
         failures.append(f"filled tokens {filled['totals']['tokens']} != 16000")
     if abs(filled["slots"][0]["cost"] - 2.0270522) > 1e-6:
         failures.append(f"slot0 cost {filled['slots'][0]['cost']} != 2.0270522")
+    # slot 0: input 2500, cache 1500, output 4000; slot 1 (legacy PROMPT_TOKEN)
+    # must count as uncached input, not vanish.
+    s0 = filled["slots"][0]
+    if (abs(s0["input"] - 2500) > 1e-9 or abs(s0["cache"] - 1500) > 1e-9
+            or abs(s0["output"] - 4000) > 1e-9):
+        failures.append(f"slot0 split {s0['input']}/{s0['cache']}/{s0['output']} != 2500/1500/4000")
+    s1 = filled["slots"][1]
+    if abs(s1["input"] - 7000) > 1e-9 or abs(s1["cache"]) > 1e-9:
+        failures.append("legacy PROMPT_TOKEN not mapped to uncached input")
+    if (abs(filled["totals"]["input"] - 9500) > 1e-9
+            or abs(filled["totals"]["cache"] - 1500) > 1e-9
+            or abs(filled["totals"]["output"] - 5000) > 1e-9):
+        failures.append("totals split != 9500/1500/5000")
 
     # 30-day slot count must be exactly 30, even at 00:00:05
     start30 = r._day_start(START) - 29 * 86400

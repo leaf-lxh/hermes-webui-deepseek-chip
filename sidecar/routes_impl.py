@@ -192,20 +192,42 @@ def _fetch_pair(start: int, end: int, token: str) -> dict:
 # --------------------------------------------------------------------------
 # parsing
 # --------------------------------------------------------------------------
-def _bucket_tokens(usage: dict) -> tuple[float, float]:
-    """Return (tokens, requests). PROMPT_TOKEN is only used when the hit/miss
-    split is absent, so cached+uncached prompt tokens are never double-counted."""
+SPLIT_KEYS = ("input", "cache", "output", "total", "requests")
+
+
+def _usage_split(usage: dict) -> dict:
+    """Split one bucket's usage into billable token kinds.
+
+    PROMPT_CACHE_HIT_TOKEN / PROMPT_CACHE_MISS_TOKEN are the modern shape;
+    PROMPT_TOKEN is the older flat shape, treated as uncached input. Never add
+    PROMPT_TOKEN on top of the hit/miss pair — that would double-count.
+    """
     hit = _num(usage.get("PROMPT_CACHE_HIT_TOKEN"))
     miss = _num(usage.get("PROMPT_CACHE_MISS_TOKEN"))
-    prompt = hit + miss if (hit or miss) else _num(usage.get("PROMPT_TOKEN"))
-    tokens = prompt + _num(usage.get("RESPONSE_TOKEN"))
-    return tokens, _num(usage.get("REQUEST"))
+    if not (hit or miss):
+        miss = _num(usage.get("PROMPT_TOKEN"))
+    output = _num(usage.get("RESPONSE_TOKEN"))
+    return {
+        "input": miss,
+        "cache": hit,
+        "output": output,
+        "total": miss + hit + output,
+        "requests": _num(usage.get("REQUEST")),
+    }
+
+
+def _add_split(dst: dict | None, src: dict) -> dict:
+    if dst is None:
+        dst = {k: 0.0 for k in SPLIT_KEYS}
+    for k in SPLIT_KEYS:
+        dst[k] = dst.get(k, 0.0) + _num(src.get(k))
+    return dst
 
 
 def _parse_amount(biz: dict) -> dict:
     biz = biz or {}
-    by_bucket: dict[int, dict[str, float]] = {}
-    by_model: dict[str, float] = {}
+    by_bucket: dict[int, dict[str, dict]] = {}
+    by_model_detail: dict[str, dict] = {}
     requests = 0.0
     for ser in biz.get("series") or []:
         if not isinstance(ser, dict):
@@ -217,14 +239,15 @@ def _parse_amount(biz: dict) -> dict:
             t = _epoch(bucket.get("time"))
             if t is None:
                 continue
-            tokens, reqs = _bucket_tokens(bucket.get("usage") or {})
+            split = _usage_split(bucket.get("usage") or {})
             slots = by_bucket.setdefault(t, {})
-            slots[model] = slots.get(model, 0.0) + tokens
-            by_model[model] = by_model.get(model, 0.0) + tokens
-            requests += reqs
+            slots[model] = _add_split(slots.get(model), split)
+            by_model_detail[model] = _add_split(by_model_detail.get(model), split)
+            requests += split["requests"]
     return {
         "by_bucket": by_bucket,
-        "by_model": by_model,
+        "by_model": {m: d["total"] for m, d in by_model_detail.items()},
+        "by_model_detail": by_model_detail,
         "requests": requests,
         "models": [m for m in (biz.get("models") or []) if isinstance(m, str)],
         "bucket": int(biz.get("bucket") or 0),
@@ -267,7 +290,7 @@ def _parse_cost(biz) -> tuple[dict[int, float], str | None]:
 
 
 def _fill_slots(start: int, end: int, bucket: int,
-                amount_by_bucket: dict[int, dict[str, float]],
+                amount_by_bucket: dict[int, dict[str, dict]],
                 cost_by_bucket: dict[int, float], label_fmt: str) -> dict:
     bucket = int(bucket or 3600)
     if bucket <= 0:
@@ -277,18 +300,42 @@ def _fill_slots(start: int, end: int, bucket: int,
     total_models: dict[str, float] = {}
     total_tokens = 0.0
     total_cost = 0.0
+    total_input = 0.0
+    total_cache = 0.0
+    total_output = 0.0
+    total_requests = 0.0
     for i in range(count):
         t = start + i * bucket
         models = amount_by_bucket.get(t)
         if models is None:
             # tolerate server-side bucket alignment surprises: fold by index
-            merged: dict[str, float] = {}
+            merged: dict[str, dict] = {}
             for bt, bm in amount_by_bucket.items():
                 if int((bt - start) // bucket) == i:
-                    for name, val in bm.items():
-                        merged[name] = merged.get(name, 0.0) + val
+                    for name, det in bm.items():
+                        merged[name] = _add_split(merged.get(name), det)
             models = merged
-        tokens = sum(models.values())
+        slot_models: dict[str, float] = {}
+        detail: dict[str, dict] = {}
+        s_input = s_cache = s_output = s_requests = 0.0
+        for name, det in models.items():
+            tokens = _num(det.get("total"))
+            if tokens <= 0:
+                continue
+            slot_input = _num(det.get("input"))
+            slot_cache = _num(det.get("cache"))
+            slot_output = _num(det.get("output"))
+            slot_models[name] = tokens
+            detail[name] = {
+                "input": slot_input,
+                "cache": slot_cache,
+                "output": slot_output,
+            }
+            s_input += slot_input
+            s_cache += slot_cache
+            s_output += slot_output
+            s_requests += _num(det.get("requests"))
+        tokens = sum(slot_models.values())
         cost = cost_by_bucket.get(t)
         if cost is None:
             cost = sum(v for bt, v in cost_by_bucket.items()
@@ -299,11 +346,20 @@ def _fill_slots(start: int, end: int, bucket: int,
             "label": label,
             "total": tokens,
             "cost": cost,
-            "models": {k: v for k, v in models.items() if v > 0},
+            "input": s_input,
+            "cache": s_cache,
+            "output": s_output,
+            "requests": s_requests,
+            "models": slot_models,
+            "detail": detail,
         })
         total_tokens += tokens
         total_cost += cost
-        for name, val in models.items():
+        total_input += s_input
+        total_cache += s_cache
+        total_output += s_output
+        total_requests += s_requests
+        for name, val in slot_models.items():
             total_models[name] = total_models.get(name, 0.0) + val
     model_list = [
         {"name": name, "tokens": val}
@@ -313,7 +369,14 @@ def _fill_slots(start: int, end: int, bucket: int,
     return {
         "slots": slots,
         "models": model_list,
-        "totals": {"tokens": total_tokens, "cost": total_cost},
+        "totals": {
+            "tokens": total_tokens,
+            "cost": total_cost,
+            "input": total_input,
+            "cache": total_cache,
+            "output": total_output,
+            "requests": total_requests,
+        },
         "bucket": bucket,
     }
 
@@ -418,6 +481,10 @@ def register(app) -> None:
                 "currency": currency or payload["currency"],
                 "requests": parsed_amount["requests"],
                 "by_model": parsed_amount["by_model"],
+                "by_model_detail": parsed_amount["by_model_detail"],
+                "input": filled["totals"].get("input", 0),
+                "cache": filled["totals"].get("cache", 0),
+                "output": filled["totals"].get("output", 0),
                 "window_start": start,
                 "window_end": end,
                 "hourly_peak": max((s["total"] for s in filled["slots"]), default=0),
